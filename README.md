@@ -43,15 +43,15 @@ git push origin v1.0.0
 
 ## NKE Cluster Setup
 
-Full setup guide for running this webinar from scratch. All resources are created via the [nine CLI](https://docs.nine.ch/docs/cli) or the [nine Cockpit](https://cockpit.nine.ch).
+Full setup guide for running this webinar from scratch. All resources are created via the [nine Cockpit](https://cockpit.nine.ch).
 
 ### 1. Create the Registry
 
-```bash
-nctl create registry webinar-registry
-```
+Create a registry via the Cockpit:
 
-Note the registry URL, username, and password from the output. Store them as GitHub Actions secrets (`REGISTRY_URL`, `REGISTRY_USERNAME`, `REGISTRY_PASSWORD`) in the [webinar-app repo settings](https://github.com/ninech/webinar-app/settings/secrets/actions).
+1. Go to **Kubernetes > Registries > Create Registry**
+2. Note the registry URL, username, and password
+3. Store them as GitHub Actions secrets (`REGISTRY_URL`, `REGISTRY_USERNAME`, `REGISTRY_PASSWORD`) in the [webinar-app repo settings](https://github.com/ninech/webinar-app/settings/secrets/actions)
 
 ### 2. Create the NKE Cluster
 
