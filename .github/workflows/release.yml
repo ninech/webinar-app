@@ -1,0 +1,48 @@
+name: Build, Push & Update Helm
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract tag name
+        id: vars
+        run: echo "TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+
+      - name: Log in to Nine registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.REGISTRY_URL }}
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          push: true
+          tags: ${{ secrets.REGISTRY_URL }}/webinar-app:${{ env.TAG }}
+
+      - name: Checkout helm repository
+        uses: actions/checkout@v4
+        with:
+          repository: ninech/webinar-helm
+          token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          path: helm-repo
+
+      - name: Update Docker image tag in values.yaml
+        run: |
+          sed -i "s|^  tag: .*|  tag: \"${{ env.TAG }}\"|g" helm-repo/values.yaml
+          cd helm-repo
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add values.yaml
+          git commit -m "Update Docker image tag to ${{ env.TAG }}"
+          git push origin main
