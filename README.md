@@ -62,147 +62,28 @@ Create an NKE cluster manually via the [nine Cockpit](https://cockpit.nine.ch):
 3. Attach the registry created in step 1 to the cluster
 4. Download the kubeconfig once the cluster is ready
 
-### 4. Install NGINX Ingress Controller
+### 3. Add Managed Services to the Cluster
 
-```bash
-helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
-helm repo update
-helm install ingress-nginx ingress-nginx/ingress-nginx \
-  --namespace ingress-nginx \
-  --create-namespace \
-  --set controller.service.type=LoadBalancer
-```
+Add the following nine managed services to the NKE cluster via the Cockpit or API:
 
-Get the external IP for DNS:
+- **NGINX Ingress** — ingress controller for routing traffic
+- **Loki** — log storage
+- **Promtail** — ships logs to Loki
+- **Metrics Agent** — collects and exposes Prometheus metrics
+- **Grafana** — dashboards for logs and metrics
+- **ArgoCD** — GitOps continuous deployment
 
-```bash
-kubectl get svc -n ingress-nginx ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
-```
+### 4. Configure ArgoCD Application
 
-### 5. Install Loki (Log Storage)
+Create an ArgoCD Application pointing to the helm chart repo:
 
-```bash
-helm repo add grafana https://grafana.github.io/helm-charts
-helm repo update
-helm install loki grafana/loki \
-  --namespace monitoring \
-  --create-namespace \
-  --set loki.auth_enabled=false \
-  --set singleBinary.replicas=1 \
-  --set loki.commonConfig.replication_factor=1 \
-  --set loki.storage.type=filesystem \
-  --set singleBinary.persistence.size=10Gi
-```
+- **Repo URL**: `https://github.com/ninech/webinar-helm.git`
+- **Path**: `.`
+- **Target Revision**: `main`
+- **Destination Namespace**: `webinar`
+- **Sync Policy**: Automated with prune and self-heal
 
-### 6. Install Promtail (Log Shipping)
-
-```bash
-helm install promtail grafana/promtail \
-  --namespace monitoring \
-  --set config.clients[0].url=http://loki-gateway.monitoring.svc.cluster.local/loki/api/v1/push
-```
-
-### 7. Install Prometheus (Metrics Collection)
-
-```bash
-helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-helm repo update
-helm install prometheus prometheus-community/prometheus \
-  --namespace monitoring \
-  --set server.persistentVolume.size=10Gi \
-  --set alertmanager.enabled=false
-```
-
-The app pods have annotations for automatic scraping:
-
-```yaml
-prometheus.io/scrape: "true"
-prometheus.io/port: "8080"
-prometheus.io/path: "/metrics"
-```
-
-### 8. Install Grafana
-
-```bash
-helm install grafana grafana/grafana \
-  --namespace monitoring \
-  --set persistence.enabled=true \
-  --set persistence.size=5Gi \
-  --set adminPassword=admin
-```
-
-Get the Grafana password:
-
-```bash
-kubectl get secret -n monitoring grafana -o jsonpath="{.data.admin-password}" | base64 -d
-```
-
-Port-forward to access Grafana:
-
-```bash
-kubectl port-forward -n monitoring svc/grafana 3000:80
-```
-
-#### Add Data Sources in Grafana
-
-1. **Prometheus**: URL = `http://prometheus-server.monitoring.svc.cluster.local`
-2. **Loki**: URL = `http://loki-gateway.monitoring.svc.cluster.local`
-
-### 9. Install ArgoCD
-
-```bash
-kubectl create namespace argocd
-kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
-```
-
-Get the ArgoCD admin password:
-
-```bash
-kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
-```
-
-Port-forward to access ArgoCD UI:
-
-```bash
-kubectl port-forward -n argocd svc/argocd-server 8443:443
-```
-
-### 10. Create the ArgoCD Application
-
-```bash
-kubectl apply -f - <<EOF
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: webinar-app
-  namespace: argocd
-spec:
-  project: default
-  source:
-    repoURL: https://github.com/ninech/webinar-helm.git
-    targetRevision: main
-    path: .
-    helm:
-      valuesObject:
-        image:
-          repository: REPLACE_WITH_REGISTRY_URL/webinar-app
-        ingress:
-          host: webinar.example.com
-  destination:
-    server: https://kubernetes.default.svc
-    namespace: webinar
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
-    syncOptions:
-      - CreateNamespace=true
-EOF
-```
-
-Replace `REPLACE_WITH_REGISTRY_URL` with your actual registry URL and `webinar.example.com` with your domain.
-
-### 11. Create the First Release
+### 5. Create the First Release
 
 ```bash
 git tag v1.0.0
