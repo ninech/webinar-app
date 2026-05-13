@@ -44,5 +44,6 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add values.yaml
+          git diff --cached --quiet && echo "Tag already up to date" && exit 0
           git commit -m "Update Docker image tag to ${{ env.TAG }}"
           git push origin main
