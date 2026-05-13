@@ -55,32 +55,12 @@ Note the registry URL, username, and password from the output. Store them as Git
 
 ### 2. Create the NKE Cluster
 
-```bash
-nctl create kcluster webinar-cluster \
-  --min-nodes 3 \
-  --max-nodes 5 \
-  --machine-type nine-standard-2
-```
+Create an NKE cluster manually via the [nine Cockpit](https://cockpit.nine.ch):
 
-Wait for the cluster to be ready:
-
-```bash
-nctl get kcluster webinar-cluster
-```
-
-Get kubeconfig:
-
-```bash
-nctl get credentials webinar-cluster
-```
-
-### 3. Attach the Registry to the Cluster
-
-This allows the cluster to pull images from your private registry without extra imagePullSecrets:
-
-```bash
-nctl apply kcluster webinar-cluster --registry webinar-registry
-```
+1. Go to **Kubernetes > Clusters > Create Cluster**
+2. Choose 3 nodes, machine type `nine-standard-2`
+3. Attach the registry created in step 1 to the cluster
+4. Download the kubeconfig once the cluster is ready
 
 ### 4. Install NGINX Ingress Controller
 
